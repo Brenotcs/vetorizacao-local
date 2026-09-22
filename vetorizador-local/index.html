@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Vetorizador Colorido Minimalista e Suave</title>
+    <script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #121212; color: #fff; }
+        .container { background: #1e1e1e; display: inline-block; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        input, select, button { padding: 10px; margin: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background: #2d2d2d; color: #fff; }
+        button { background: #6200ee; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #3700b3; }
+        #status { margin-top: 20px; font-weight: bold; color: #03dac6; }
+        .control-group { margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Vetorizador Colorido Minimalista</h1>
+        <p>Escolha a imagem, defina as cores e deixe o traçado liso e sem imperfeições:</p>
+        
+        <input type="file" id="upload" accept="image/*"><br>
+
+        <div class="control-group">
+            <label for="numColors">Cores Principais:</label>
+            <select id="numColors">
+                <option value="4">4 Cores (Muito limpo / Estilo Ícone)</option>
+                <option value="8">8 Cores (Equilibrado)</option>
+                <option value="16" selected>16 Cores (Padrão)</option>
+                <option value="32">32 Cores (Mais Detalhes)</option>
+            </select>
+        </div>
+
+        <button onclick="converter()">Converter para Vetor</button>
+        
+        <p id="status"></p>
+    </div>
+
+    <script>
+        function converter() {
+            const input = document.getElementById('upload');
+            const status = document.getElementById('status');
+            const numColors = parseInt(document.getElementById('numColors').value);
+
+            if (input.files.length === 0) {
+                alert('Por favor, selecione uma imagem primeiro!');
+                return;
+            }
+
+            if (typeof ImageTracer === 'undefined') {
+                status.innerText = 'Erro: A biblioteca ImageTracer não carregou.';
+                return;
+            }
+
+            status.innerText = 'A otimizar imagem...';
+
+            const file = input.files[0];
+            const reader = new FileReader();
+            
+            reader.readAsDataURL(file);
+
+            reader.onload = function (event) {
+                const img = new Image();
+                img.src = event.target.result;
+
+                img.onload = function () {
+                    status.innerText = 'A suavizar bordas e a gerar vetor limpo...';
+
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    const maxSize = 800;
+                    if (width > maxSize || height > maxSize) {
+                        if (width > height) {
+                            height = Math.round((height * maxSize) / width);
+                            width = maxSize;
+                        } else {
+                            width = Math.round((width * maxSize) / height);
+                            height = maxSize;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const resizedDataUrl = canvas.toDataURL('image/png');
+
+                    // Opções ajustadas para remover o efeito pixelado e imperfeições
+                    const options = {
+                        numberofcolors: numColors, // Respeita a quantidade de cores escolhida
+                        pathomit: 5,               // Ignora pequenos ruídos e manchas soltas
+                        ltres: 1,                  // Precisão linear
+                        qtres: 1,                  // Precisão das curvas
+                        blurradius: 2,             // Remove o serrilhado pixel a pixel das bordas
+                        blurdelta: 20,             // Sensibilidade do desfoque
+                        roundcoords: 1,            // Arredonda coordenadas
+                        scale: 1
+                    };
+
+                    setTimeout(() => {
+                        ImageTracer.imageToSVG(resizedDataUrl, function (svgString) {
+                            status.innerText = 'Sucesso! A descarregar vetor limpo...';
+
+                            const blob = new Blob([svgString], { type: 'image/svg+xml' });
+                            const url = URL.createObjectURL(blob);
+                            
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `vetor_liso_${numColors}_cores.svg`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+
+                            status.innerText = 'Pronto!';
+                        }, options);
+                    }, 100);
+                };
+            };
+        }
+    </script>
+
+</body>
+</html>
